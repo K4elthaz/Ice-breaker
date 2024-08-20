@@ -1,5 +1,15 @@
 const { Client, GatewayIntentBits, PermissionsBitField } = require('discord.js')
+const { createClient } = require('@sanity/client')
 const axios = require('axios')
+
+const tenorAPIKey = process.env.TENOR_API
+
+const sanity = createClient({
+  projectId: '4imfuif9',
+  dataset: 'production',
+  useCdn: true,
+  apiVersion: '2022-03-07'
+})
 
 const client = new Client({
   intents: [
@@ -9,36 +19,15 @@ const client = new Client({
   ],
 })
 
-// Configuration
-const tenorAPIKey = process.env.TENOR_API
-const searchTerm = 'men kissing'
-const keywords = [
-  'bading',
-  'arnold celis',
-  'tarub',
-  'gae',
-  'anot',
-  'gay',
-  'fenris',
-  'liempo',
-  'nigga',
-  'nigger',
-  'satsu',
-  'james',
-  '@718481765811093536'
-]
-
-// Function to fetch a random GIF from Tenor
-async function fetchRandomGif() {
+async function fetchGifUrl(searchTerm) {
   try {
     const response = await axios.get(
       `https://tenor.googleapis.com/v2/search?q=${encodeURIComponent(
         searchTerm
-      )}&key=${tenorAPIKey}&limit=20`
+      )}&key=${tenorAPIKey}&limit=1`
     )
     const gifs = response.data.results
     console.log('Fetched GIFs:', gifs)
-
     if (gifs.length > 0) {
       const randomGif = gifs[Math.floor(Math.random() * gifs.length)].url
       return randomGif
@@ -52,27 +41,32 @@ async function fetchRandomGif() {
   }
 }
 
+async function getGif(message) {
+  const groq = "*[_type == 'keywords'] { message_keywords, gif_search_phrase }"
+  const keywords = await sanity.fetch(groq)
+  console.log(keywords)
+  for (const keyword of keywords) {
+    for (const message_keyword of keyword.message_keywords) {
+      if (message.toLowerCase().includes(message_keyword)) {
+        return fetchGifUrl(keyword.gif_search_phrase)
+      }
+    }
+  }
+  return null
+}
+
 client.once('ready', () => {
   console.log('Bot is online!')
-  const channel = client.channels.cache.get('1099699565826953236')
-  if (!channel) {
-    console.error('Channel not found!')
-    return
-  }
 })
 
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return
-  console.log('Message Received:', message.content)
-
   if (message.content.startsWith('@nohomo')) {
     if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
       return message.reply('You do not have permission to use this command.')
     }
-    
     const messages = await message.channel.messages.fetch({ limit: 100 })
     const botMessages = messages.filter((msg) => msg.author.bot)
-
     botMessages.forEach(async (msg) => {
       try {
         await msg.delete()
@@ -80,24 +74,13 @@ client.on('messageCreate', async (message) => {
         console.error('Error deleting message:', error)
       }
     })
-
-    return message.reply('Bawal Bakla dito.')
+    return message.reply('Bawal bakla dito. Tangina mo.')
   }
-
-
-
-  const foundKeyword = keywords.find((keyword) =>
-    message.content.toLowerCase().includes(keyword)
-  )
-
-  if (foundKeyword) {
-    console.log(`Keyword "${foundKeyword}" detected, fetching GIF...`)
-    const gifUrl = await fetchRandomGif()
-    if (gifUrl) {
-      message.reply(gifUrl)
-    } else {
-      console.error('No GIF URL to send in response to the keyword.')
-    }
+  const gifUrl = await getGif(message.content)
+  if (gifUrl) {
+    message.reply(gifUrl)
+  } else {
+    console.error('No GIF URL to send in response to the keyword.')
   }
 })
 
