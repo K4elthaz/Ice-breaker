@@ -24,7 +24,7 @@ async function fetchGifUrl(searchTerm) {
     const response = await axios.get(
       `https://tenor.googleapis.com/v2/search?q=${encodeURIComponent(
         searchTerm
-      )}&key=${tenorAPIKey}&limit=1`
+      )}&key=${tenorAPIKey}&limit=100`
     )
     const gifs = response.data.results
     console.log('Fetched GIFs:', gifs)
