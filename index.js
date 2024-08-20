@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits } = require('discord.js')
+const { Client, GatewayIntentBits, PermissionsBitField } = require('discord.js')
 const axios = require('axios')
 
 const client = new Client({
@@ -63,8 +63,28 @@ client.once('ready', () => {
 
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return
-
   console.log('Message Received:', message.content)
+
+  if (message.content.startsWith('@nohomo')) {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
+      return message.reply('You do not have permission to use this command.')
+    }
+    
+    const messages = await message.channel.messages.fetch({ limit: 100 })
+    const botMessages = messages.filter((msg) => msg.author.bot)
+
+    botMessages.forEach(async (msg) => {
+      try {
+        await msg.delete()
+      } catch (error) {
+        console.error('Error deleting message:', error)
+      }
+    })
+
+    return message.reply('Bawal Bakla dito.')
+  }
+
+
 
   const foundKeyword = keywords.find((keyword) =>
     message.content.toLowerCase().includes(keyword)
@@ -74,9 +94,7 @@ client.on('messageCreate', async (message) => {
     console.log(`Keyword "${foundKeyword}" detected, fetching GIF...`)
     const gifUrl = await fetchRandomGif()
     if (gifUrl) {
-      message.channel.send(gifUrl).catch((error) => {
-        console.error('Error sending GIF:', error)
-      })
+      message.reply(gifUrl)
     } else {
       console.error('No GIF URL to send in response to the keyword.')
     }
