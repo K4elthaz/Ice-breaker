@@ -25,6 +25,7 @@ const keywords = [
   'nigger',
   'satsu',
   'james',
+  '@718481765811093536'
 ]
 
 // Function to fetch a random GIF from Tenor
