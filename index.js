@@ -16,6 +16,7 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers, // Needed to fetch server members
   ],
 })
 
@@ -61,21 +62,90 @@ client.once('ready', () => {
 
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return
+
   if (message.content.startsWith('@nohomo')) {
     if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
-      return message.reply('You do not have permission to use this command.')
+      return message.channel.send('You do not have permission to use this command.')
     }
+  
     const messages = await message.channel.messages.fetch({ limit: 100 })
+  
     const botMessages = messages.filter((msg) => msg.author.bot)
     botMessages.forEach(async (msg) => {
       try {
         await msg.delete()
       } catch (error) {
-        console.error('Error deleting message:', error)
+        console.error('Error deleting bot message:', error)
       }
     })
-    return message.reply('Bawal bakla dito. Tangina mo.')
+  
+    const userMessages = messages.filter((msg) => !msg.author.bot)
+    const keywords = await sanity.fetch("*[_type == 'keywords'] { message_keywords }")
+    userMessages.forEach(async (msg) => {
+      for (const keyword of keywords) {
+        if (keyword.message_keywords.some((k) => msg.content.toLowerCase().includes(k))) {
+          try {
+            await msg.delete()
+          } catch (error) {
+            console.error('Error deleting user message:', error)
+          }
+        }
+      }
+    })
+  
+    try {
+      await message.delete()
+    } catch (error) {
+      console.error('Error deleting the user\'s command message:', error)
+    }
+    console.log('Deleted messages complete!')
+    return message.channel.send('Bawal bakla dito. Tangina mo.')
   }
+  
+
+  if (message.content.startsWith('@amigay?')) {
+    const percentage = Math.floor(Math.random() * 101)
+    return message.reply(`||You are ${percentage}% gay!! 🌈||`)
+  }
+
+  if (message.content.startsWith('@kamusta')) {
+    const roleId = '1220427702952005643';
+    const members = await message.guild.members.fetch();
+    
+    const roleMembers = members.filter(member => 
+      !member.user.bot && member.roles.cache.has(roleId)
+    );
+  
+    if (roleMembers.size > 0) {
+      const randomMember = roleMembers.random();
+      const botMessage = await message.channel.send(`${randomMember}, kamusta ka naman?`);
+  
+      const filter = response => response.author.id === randomMember.id && !response.author.bot;
+      const collector = message.channel.createMessageCollector({ filter, time: 15000 });
+  
+      collector.on('collect', (response) => {
+        if (response.author.id === randomMember.id) {
+          response.reply('Tanga ka? 😂');
+          collector.stop();
+        }
+      });
+  
+      collector.on('end', collected => {
+        if (collected.size === 0) {
+          botMessage.reply('Bading ata siya di nag reply! 😢');
+        }
+      });
+    } else {
+      message.reply('No users found with the specified role!');
+    }
+  
+    try {
+      await message.delete();
+    } catch (error) {
+      console.error('Error deleting the user\'s command message:', error);
+    }
+  }
+  
   const gifUrl = await getGif(message.content)
   if (gifUrl) {
     message.reply(gifUrl)
