@@ -68,7 +68,7 @@ client.on('messageCreate', async (message) => {
       return message.channel.send('You do not have permission to use this command.')
     }
   
-    const messages = await message.channel.messages.fetch({ limit: 100 })
+    const messages = await message.channel.messages.fetch({ limit: 20 })
   
     const botMessages = messages.filter((msg) => msg.author.bot)
     botMessages.forEach(async (msg) => {
@@ -124,7 +124,10 @@ client.on('messageCreate', async (message) => {
       const collector = message.channel.createMessageCollector({ filter, time: 15000 });
   
       collector.on('collect', (response) => {
-        if (response.author.id === randomMember.id) {
+        if (response.content.toLowerCase().includes('tanga ako tangina mo')) {
+          response.reply('Oo nga galing mo don tas bading ka pa! 😂');
+          collector.stop();
+        } else {
           response.reply('Tanga ka? 😂');
           collector.stop();
         }
