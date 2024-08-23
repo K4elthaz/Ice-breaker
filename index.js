@@ -109,30 +109,44 @@ client.on('messageCreate', async (message) => {
   }
 
   if (message.content.startsWith('@kamusta')) {
+    const kamustaReplies = await sanity.fetch("*[_type == 'kamustaReply']");
     const roleId = '1220427702952005643';
     const members = await message.guild.members.fetch();
-    
+
     const roleMembers = members.filter(member => 
       !member.user.bot && member.roles.cache.has(roleId)
     );
-  
+
     if (roleMembers.size > 0) {
       const randomMember = roleMembers.random();
       const botMessage = await message.channel.send(`${randomMember}, kamusta ka naman?`);
-  
+
       const filter = response => response.author.id === randomMember.id && !response.author.bot;
       const collector = message.channel.createMessageCollector({ filter, time: 15000 });
-  
+
       collector.on('collect', (response) => {
-        if (response.content.toLowerCase().includes('tanga ako tangina mo')) {
-          response.reply('Oo nga galing mo don tas bading ka pa! 😂');
-          collector.stop();
-        } else {
-          response.reply('Tanga ka? 😂');
-          collector.stop();
+        let foundReply = false;
+        let randomBotReply;
+      
+        for (const reply of kamustaReplies) {
+          if (reply.reply_content.some(keyword => response.content.toLowerCase().includes(keyword.toLowerCase()))) {
+            randomBotReply = reply.bot_reply_message[Math.floor(Math.random() * reply.bot_reply_message.length)];
+            foundReply = true;
+            break;
+          }
         }
+      
+        if (!foundReply) {
+          const randomReplyIndex = Math.floor(Math.random() * kamustaReplies.length);
+          randomBotReply = kamustaReplies[randomReplyIndex].bot_reply_message[
+            Math.floor(Math.random() * kamustaReplies[randomReplyIndex].bot_reply_message.length)
+          ];
+        }
+      
+        response.reply(randomBotReply);
+        collector.stop();
       });
-  
+
       collector.on('end', collected => {
         if (collected.size === 0) {
           botMessage.reply('Bading ata siya di nag reply! 😢');
@@ -141,14 +155,14 @@ client.on('messageCreate', async (message) => {
     } else {
       message.reply('No users found with the specified role!');
     }
-  
+
     try {
       await message.delete();
     } catch (error) {
       console.error('Error deleting the user\'s command message:', error);
     }
   }
-  
+
   const gifUrl = await getGif(message.content)
   if (gifUrl) {
     message.reply(gifUrl)
